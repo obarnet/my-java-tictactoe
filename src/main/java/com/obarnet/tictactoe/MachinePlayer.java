@@ -3,6 +3,7 @@ package com.obarnet.tictactoe;
 import java.util.Random;
 
 public class MachinePlayer extends Player {
+	private static final long serialVersionUID = 5847531776646182431L;
 	public static int TOTAL = 0;
 	
 	public MachinePlayer() {
@@ -18,7 +19,7 @@ public class MachinePlayer extends Player {
 	}
 	
 	@Override
-	public int play() {
+	public int play(char[] plays) {
 		System.out.println("\nMachine turn!");
 		int choice;
 		while(true) {

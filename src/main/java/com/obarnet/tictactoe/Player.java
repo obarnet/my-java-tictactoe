@@ -1,6 +1,10 @@
 package com.obarnet.tictactoe;
 
-public abstract class Player {
+import java.io.Serializable;
+
+public abstract class Player implements Serializable {
+	private static final long serialVersionUID = -7562119652643315267L;
+
 	public enum Type {
 		HUMAN,
 		MACHINE;
@@ -8,10 +12,9 @@ public abstract class Player {
 	
 	protected char token;
 	protected Player.Type type;
-	protected static final char[] plays = {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
 	protected String name;
 	
-	public abstract int play();
+	public abstract int play(char[] plays);
 
 	public String getName() {
 		return name;
@@ -24,9 +27,4 @@ public abstract class Player {
 	public Player.Type getType() {
 		return type;
 	}
-
-	public static char[] getPlays() {
-		return plays;
-	}
-	
 }
