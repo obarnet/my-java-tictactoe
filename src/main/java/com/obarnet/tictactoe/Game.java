@@ -1,6 +1,8 @@
 package com.obarnet.tictactoe;
 
-import java.io.Serializable;
+import java.io.*;
+
+import javax.swing.JOptionPane;
 
 public class Game implements Serializable {
 
@@ -9,9 +11,24 @@ public class Game implements Serializable {
 	private Player[] players = new Player[2];
 	private int winner = 0;
 	private int play_count = 0;
-	private char plays[] = new char[9];
-
+	private int currentPlayerIndex = 0;
+	private char plays[][] = {{' ',' ',' '}, {' ',' ',' '}, {' ',' ',' '}};
+	static private Game gameLogic;
+	private int currentPlayerMode;
+	private static int trainCount = 0;
 	public Game(int playerMode) {
+		setPlayerMode(playerMode);
+	}
+	
+	public void showGameBoard() {
+		GameFrame.getGameScreen().showBoard();
+		if (getCurrentPlayer().type == Player.Type.MACHINE) {
+			machinePlays();
+		}
+	}
+
+	public void setPlayerMode(int playerMode) {
+		currentPlayerMode = playerMode;
 		switch (playerMode) {
 			case 1: {
 				players[0] = new HumanPlayer();
@@ -23,104 +40,143 @@ public class Game implements Serializable {
 				players[1] = new HumanPlayer('O');
 				break;
 			}
+			case 3: {
+				players[0] = new MachinePlayer('X');
+				players[1] = new MachinePlayer('O');
+				break;
+			}
 			default:
 				break;
 		}
-
-		for(int i=0; i<plays.length; i++) {
-			plays[i] = ' ';
-		}
-	}
-	
-	public char[] getPlays() {
-		return plays;
 	}
 	
 	public int getPlayCount() {
 		return play_count;
 	}
 	
-	public boolean Start() {
-		System.out.println("The first player to play is :" + players[winner].getName());
-		
-		int currentPlayerIndex = winner;
-		
-		while(true) {
-			Player currentPlayer = players[currentPlayerIndex];
-			int choice = currentPlayer.play(plays);
-			if (choice == -1) {
-				return false;
-			}
-			if (!playTurn(choice, currentPlayer.getToken())) {
-				break;
-			}
-			currentPlayerIndex = 1 - currentPlayerIndex;
-			
+	public Player getCurrentPlayer() {
+		return players[currentPlayerIndex];
+	}
+	
+	public static Game getGameLogic(int mode) {
+		if(gameLogic == null) {
+			gameLogic = new Game(mode);
+		} else if (mode != gameLogic.currentPlayerMode) {
+			gameLogic.setPlayerMode(mode);
+		}
+		return gameLogic;
+	}
+	
+	public static Game getGameLogic() {
+		return getGameLogic(gameLogic.currentPlayerMode);
+	}
+	
+	public void play(int x, int y) {
+		plays[x][y] = getCurrentPlayer().token;
+
+		GameFrame.getGameScreen().updateBoard(x, y, getCurrentPlayer());
+
+		if(!playTurn()) {
+			return;
 		}
 		
-		printTable(plays);
-		System.out.println("Play Again? y/n");
-
-		// Create Quit Game Method
-
+		if (getCurrentPlayer().type == Player.Type.MACHINE) {
+			machinePlays();
+		}
+	}
+	
+	public void resetGame() {
 		play_count = 0;
 		HumanPlayer.TOTAL = 0;
 		MachinePlayer.TOTAL = 0;
-		
-		
-		String again = Tictactoe.scanner.next();
-		if (!again.equals(new String("y"))) {
-			return false;
-		} else {
-			return true;
-		}
-	}
-	
-	public void printTable(char[] placements) {
+		GameFrame.getGameScreen().clearBoard();
 		for(int i=0; i<3; i++) {
-			System.out.println(" --- --- ---");
-			System.out.print("|");
 			for(int j=0; j<3; j++) {
-				int index = 3 * i + j;
-				System.out.print(" "+placements[index]+" |");
+				plays[i][j] = ' ';
 			}
-			System.out.print("\n");
 		}
-		System.out.println(" --- --- ---");
+		File gameFile = new File("savegame.ttt");
+		if (gameFile.exists()) {
+			gameFile.delete();
+		}
+	}
+
+	private void machinePlays() {
+		int[] positions = getCurrentPlayer().play(plays);
+		play(positions[0], positions[1]);
 	}
 	
-	public void printTable() {
-		printTable(plays);
-	}
-	
-	public boolean playTurn(int position, char token) {
-		plays[position-1] = token;
-		boolean hasNextTurn = false;
+	public boolean playTurn() {
+		Object[] options = { "Play Again", "Go To Menu", "Quit Game" };
+		boolean keepPlaying = true;
+		String message;
 		if (somebodyWon()) {
-			System.out.println(players[winner].getName() + " won! ");
+			message = players[winner].getName() + " won! ";
+			currentPlayerIndex = winner;
+			keepPlaying = false;
 		} else if (++play_count >= MAX_PLAYS) {
-			System.out.println("Nobody Won! ");
-			winner = 1 - winner;
+			message = "Nobody Won! ";
+			currentPlayerIndex = 1 - currentPlayerIndex;
+			keepPlaying = false;
 		} else {
-			printTable(plays);
-			hasNextTurn = true;
+			currentPlayerIndex = 1 - currentPlayerIndex;
+			if (currentPlayerMode != 3) {
+				try {
+					SaveGame();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			return keepPlaying;
 		}
-		return hasNextTurn;
+		int result;
+		
+		if (currentPlayerMode == 3) {
+			if (++trainCount < 1000) {
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				result = JOptionPane.YES_OPTION;
+			} else {
+				trainCount = 0;
+				result = JOptionPane.NO_OPTION;
+			}
+		} else {
+			result = JOptionPane.showOptionDialog(null, null, message, JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE,
+                null, options, null);
+		}
+		
+		if (result == JOptionPane.YES_OPTION) {
+			resetGame();
+			if (getCurrentPlayer().type == Player.Type.MACHINE) {
+				machinePlays();
+			}
+		} else if (result == JOptionPane.NO_OPTION) {
+			resetGame();
+			GameFrame.getGameScreen().GoToMenu();
+		} else {
+			resetGame();
+			GameFrame.getGameScreen().QuitGame();
+		}
+		
+		return keepPlaying;
 	}
 	
 	public boolean somebodyWon() {
 		char winnerToken = ' ';
 		
-		if (plays[0] == plays[4] && plays[4] == plays[8] && plays[0] != ' ') {
-			winnerToken = plays[0];
-		} else if (plays[2] == plays[4]	&& plays[4] == plays[6]	&& plays[2] != ' ') {
-			winnerToken = plays[2];
+		if (plays[0][0] == plays[1][1] && plays[1][1] == plays[2][2] && plays[0][0] != ' ') {
+			winnerToken = plays[0][0];
+		} else if (plays[0][2] == plays[1][1]	&& plays[1][1] == plays[2][0]	&& plays[0][2] != ' ') {
+			winnerToken = plays[0][2];
 		} else {
 			for(int i=0; i<3; i++) {
-				if (plays[3 * i] == plays[3 * i + 1] && plays[3 * i + 1] == plays[3 * i + 2] && plays[3 * i] != ' ') {
-					winnerToken = plays[3 * i];
-				} else if (plays[i] == plays[3 + i]	&& plays[3 + i] == plays[6 + i] && plays[i] != ' ') {
-					winnerToken = plays[i];
+				if (plays[i][0] == plays[i][1] && plays[i][1] == plays[i][2] && plays[i][0] != ' ') {
+					winnerToken = plays[i][0];
+				} else if (plays[0][i] == plays[1][i]	&& plays[1][i] == plays[2][i] && plays[0][i] != ' ') {
+					winnerToken = plays[0][i];
 				}
 			}
 		}
@@ -135,5 +191,35 @@ public class Game implements Serializable {
 		}
 		
 		return true;
+	}
+	
+	
+	public static void LoadGame() throws IOException,
+										ClassNotFoundException {
+		
+		FileInputStream input = new FileInputStream("savegame.ttt");
+		ObjectInputStream objReader = new ObjectInputStream(input);
+		Game tttGame = (Game) objReader.readObject();
+		objReader.close();
+		gameLogic = tttGame;
+		gameLogic.showGameBoard();
+		for (int i=0; i<3; i++) {
+			for (int j=0; j<3; j++) {
+				Player player = null;
+				if (gameLogic.plays[i][j] == 'X') {
+					player = gameLogic.players[0];
+				} else if (gameLogic.plays[i][j] == 'O') {
+					player = gameLogic.players[1];
+				}
+				GameFrame.getGameScreen().updateBoard(i, j, player);
+			}
+		}
+	}
+	
+	public static void SaveGame() throws IOException {
+		FileOutputStream input = new FileOutputStream("savegame.ttt");
+		ObjectOutputStream objWriter = new ObjectOutputStream(input);
+		objWriter.writeObject(getGameLogic());
+		objWriter.close();
 	}
 }

@@ -1,5 +1,6 @@
 package com.obarnet.tictactoe;
 
+import java.awt.Color;
 import java.io.Serializable;
 
 public abstract class Player implements Serializable {
@@ -13,8 +14,9 @@ public abstract class Player implements Serializable {
 	protected char token;
 	protected Player.Type type;
 	protected String name;
-	
-	public abstract int play(char[] plays);
+	protected Color tokenColor;
+
+	public abstract int[] play(char[][] plays);
 
 	public String getName() {
 		return name;
@@ -27,4 +29,9 @@ public abstract class Player implements Serializable {
 	public Player.Type getType() {
 		return type;
 	}
+	
+	public Color getTokenColor() {
+		return tokenColor;
+	}
+
 }
